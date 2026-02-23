@@ -17,9 +17,8 @@
             background-size: cover; display: flex; justify-content: center; align-items: center; z-index: 10000;
         }
         .login-card { background: white; padding: 40px; border-radius: 15px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; outline: none; }
-        .login-card input:focus { border-color: #1a73e8; }
-        #loginBtn { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; }
+        #loginBtn { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
         /* --- MAIN APP --- */
         #mainApp { display: none; padding: 20px; }
@@ -44,15 +43,7 @@
         .upload-container input[type="file"] { font-size: 11px; width: 180px; }
         #btnUpload { background-color: #f57c00; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 11px; }
 
-        /* TARGET BLOCK */
-        #targetBlock { 
-            display: none; padding: 30px; margin-top: 100px; background: white; 
-            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-        .coder-sheet { margin-bottom: 40px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .coder-header { background: #333; color: white; padding: 10px; font-weight: bold; }
-
-        /* MAIN TABLE */
+        /* MAIN TABLE STYLES */
         .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: auto; max-height: 75vh; margin-top: 20px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2100px; }
         th { background: #1a73e8; color: white; position: sticky; top: 0; padding: 10px; z-index: 10; font-size: 10px; border-right: 1px solid #4da3ff; text-transform: uppercase; }
@@ -69,9 +60,25 @@
         input.date-cell { width: 85px; border: none; background: transparent; color: white; font-weight: bold; text-align: center; font-size: 10px; }
         .total-col { font-weight: bold; background: #e8f5e9; color: #2e7d32; width: 60px; }
         .avg-col { font-weight: bold; background: #fffde7; color: #f57f17; width: 60px; }
-        
+
+        /* TARGET BLOCK (ANALYSIS VIEW) */
+        #targetBlock { display: none; padding: 30px; margin-top: 100px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .coder-sheet { margin-bottom: 40px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .coder-header { background: #333; color: white; padding: 10px; font-weight: bold; }
+
+        /* --- DATA STORE MODAL (RESTORED) --- */
         #storeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; flex-direction: column; padding: 20px; overflow: auto; }
+        .modal-header-btns { position: sticky; top: 0; background: white; padding: 10px; display: flex; justify-content: flex-end; gap: 10px; z-index: 100; border-bottom: 2px solid #1a73e8; }
         .m-btn { padding: 10px 20px; border-radius: 5px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .close-btn { background: #d32f2f; }
+        .print-btn { background: #455a64; }
+        .down-btn { background: #f57c00; }
+        
+        .stored-table { width: 100%; border-collapse: collapse; margin-top: 20px; min-width: 2100px; }
+        .stored-table th { background: #333; color: white; padding: 8px; font-size: 10px; border: 1px solid #555; }
+        .stored-table td { border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px; white-space: nowrap; }
+
+        @media print { .no-print { display: none !important; } #storeModal { position: static; display: block; overflow: visible; } }
     </style>
 </head>
 <body>
@@ -82,7 +89,7 @@
             <input type="text" id="user" placeholder="Username (praveen)">
             <input type="password" id="pass" placeholder="Password (1234)">
             <button id="loginBtn" onclick="doLogin()">SUBMIT</button>
-            <p id="err" style="color:red; display:none; font-size:12px; margin-top:10px;">Invalid Username or Password</p>
+            <p id="err" style="color:red; display:none; font-size:12px; margin-top:10px;">Invalid Credentials</p>
         </div>
     </div>
 
@@ -125,14 +132,16 @@
     </div>
 
     <div id="storeModal">
-        <div style="text-align: right; padding: 20px;">
-            <button class="m-btn" style="background:#d32f2f" onclick="closeStore()">CLOSE</button>
+        <div class="modal-header-btns no-print">
+            <button class="m-btn down-btn" onclick="downloadCSV()">📥 DOWNLOAD CSV</button>
+            <button class="m-btn print-btn" onclick="window.print()">🖨️ PRINT REPORT</button>
+            <button class="m-btn close-btn" onclick="closeStore()">✖ CLOSE</button>
         </div>
-        <div id="storeContent"></div>
+        <h2 style="color: #1a73e8; padding-left: 10px;">📊 FULL ARCHIVED PRODUCTIVITY LOGS</h2>
+        <div id="storeContent" style="overflow-x: auto; padding: 10px;"></div>
     </div>
 
 <script>
-    // Employee Database
     const employees = [
         {id: "83890", name: "Vishnupriya Govindaswamy", spec: "Medical Coding", mgr: "Dilip Kumar"},
         {id: "84470", name: "Kavin J", spec: "Billing", mgr: "Dilip Kumar"},
@@ -153,24 +162,18 @@
 
     let database = [];
 
-    // --- FIXED LOGIN LOGIC ---
     function doLogin() {
         const u = document.getElementById('user').value;
         const p = document.getElementById('pass').value;
-        
         if(u === 'praveen' && p === '1234') {
             document.getElementById('loginOverlay').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             renderTable();
-        } else {
-            document.getElementById('err').style.display = 'block';
-        }
+        } else { document.getElementById('err').style.display = 'block'; }
     }
 
-    // Allow "Enter" key for login
-    document.getElementById('pass').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') doLogin();
-    });
+    // Enter key for login
+    document.getElementById('pass').addEventListener('keydown', (e) => { if(e.key === 'Enter') doLogin(); });
 
     function renderTable() {
         const tb = document.getElementById('tBody');
@@ -204,26 +207,21 @@
     function handleFileUpload() {
         const fileInput = document.getElementById('fileInput');
         if (!fileInput.files[0]) return alert("Please select a file.");
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, {type: 'array'});
             const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
             if (jsonData.length === 0) return alert("File is empty.");
-
             const required = ["Specialty", "Coder Name", "Account Number", "MRN", "DOU"];
             const missing = required.filter(h => !Object.keys(jsonData[0]).includes(h));
-            if (missing.length > 0) return alert("Missing Columns: " + missing.join(", "));
-
+            if (missing.length > 0) return alert("Missing: " + missing.join(", "));
             const grouped = jsonData.reduce((acc, obj) => {
                 const key = obj["Coder Name"] || "Unknown";
                 if (!acc[key]) acc[key] = [];
                 acc[key].push(obj);
                 return acc;
             }, {});
-
             displayAnalysis(grouped);
         };
         reader.readAsArrayBuffer(fileInput.files[0]);
@@ -233,9 +231,7 @@
         const res = document.getElementById('analysisResults');
         res.innerHTML = '';
         for (const coder in grouped) {
-            let html = `<div class="coder-sheet">
-                <div class="coder-header">${coder} - Total: ${grouped[coder].length}</div>
-                <table style="min-width:100%"><thead>
+            let html = `<div class="coder-sheet"><div class="coder-header">${coder} (Total: ${grouped[coder].length})</div><table style="min-width:100%"><thead>
                 <tr><th>Specialty</th><th>Account Number</th><th>MRN</th><th>DOU</th></tr></thead><tbody>`;
             grouped[coder].forEach(r => {
                 html += `<tr><td>${r.Specialty}</td><td>${r["Account Number"]}</td><td>${r.MRN}</td><td>${r.DOU}</td></tr>`;
@@ -246,15 +242,59 @@
         document.getElementById('targetBlock').style.display = 'block';
     }
 
-    function resetView() {
-        document.getElementById('inputSection').style.display = 'block';
-        document.getElementById('targetBlock').style.display = 'none';
-        document.getElementById('fileInput').value = '';
+    function validateAndSubmit() {
+        let entries = [];
+        for(let i=0; i<employees.length; i++) {
+            let tot = document.getElementById(`tot-${i}`).innerText;
+            if(Number(tot) > 0) {
+                let hourly = [];
+                document.querySelectorAll(`.in-${i}`).forEach(inp => hourly.push(inp.value));
+                entries.push({
+                    date: document.querySelector(`.date-${i}`).value,
+                    name: employees[i].name, id: employees[i].id, spec: employees[i].spec, mgr: employees[i].mgr,
+                    h: hourly, total: tot, avg: document.getElementById(`avg-${i}`).innerText
+                });
+            }
+        }
+        if(entries.length === 0) return alert("No data to submit.");
+        database = [...database, ...entries];
+        alert("✅ Data Submitted Successfully!");
+        renderTable();
     }
 
-    function openStore() { document.getElementById('storeModal').style.display = 'flex'; }
+    function openStore() {
+        const cont = document.getElementById('storeContent');
+        if(database.length === 0) {
+            cont.innerHTML = "<p style='text-align:center; padding:50px;'>No data archived yet.</p>";
+        } else {
+            let h = `<table class="stored-table"><thead><tr>
+                <th>DATE</th><th>NAME</th><th>ID</th><th>SPEC</th><th>MGR</th>
+                <th>8-9</th><th>9-10</th><th>10-11</th><th>11-12</th><th>1-2</th><th>2-3</th><th>3-4</th><th>4-5</th><th>5-6</th>
+                <th>TOTAL</th><th>AVG</th>
+            </tr></thead><tbody>`;
+            database.forEach(d => {
+                h += `<tr><td>${d.date}</td><td>${d.name}</td><td>${d.id}</td><td>${d.spec}</td><td>${d.mgr}</td>
+                    ${d.h.map(v => `<td>${v}</td>`).join('')}
+                    <td style='font-weight:bold'>${d.total}</td><td>${d.avg}</td></tr>`;
+            });
+            cont.innerHTML = h + "</tbody></table>";
+        }
+        document.getElementById('storeModal').style.display = 'flex';
+    }
+
     function closeStore() { document.getElementById('storeModal').style.display = 'none'; }
-    function validateAndSubmit() { alert("Data Transferred to Store!"); }
+    function resetView() { document.getElementById('inputSection').style.display = 'block'; document.getElementById('targetBlock').style.display = 'none'; }
+
+    function downloadCSV() {
+        if(database.length === 0) return;
+        let csv = "Date,Name,ID,Spec,Total,Avg\n";
+        database.forEach(d => { csv += `${d.date},${d.name},${d.id},${d.spec},${d.total},${d.avg}\n`; });
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Productivity_Export.csv';
+        a.click();
+    }
 </script>
 </body>
 </html>
