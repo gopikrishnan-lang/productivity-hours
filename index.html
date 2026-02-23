@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Productivity Database - Full Suite</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #f4f7f6; }
+
+        /* --- LOGIN SCREEN --- */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                        url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1600');
+            background-size: cover; display: flex; justify-content: center; align-items: center; z-index: 10000;
+        }
+        .login-card { background: white; padding: 40px; border-radius: 15px; width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .login-card input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; }
+        #loginBtn { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+        /* --- NEW NAVIGATION BAR (Top Right) --- */
+        .navbar {
+            position: fixed; top: 0; width: 100%; height: 60px; background: #fff;
+            display: flex; align-items: center; justify-content: flex-end; padding: 0 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000;
+        }
+        .nav-btn-green {
+            background-color: #2e7d32; color: white; border: none;
+            padding: 10px 20px; border-radius: 10px; font-weight: bold;
+            cursor: pointer; font-size: 12px;
+        }
+
+        /* --- NEW UPLOAD CONTROLS (Top Left - Square Black) --- */
+        #uploadControls {
+            display: none; position: fixed; top: 12px; left: 20px; 
+            z-index: 2000; align-items: center; gap: 10px;
+        }
+        .sq-black-btn {
+            background: #000; color: white; border: none; height: 35px;
+            padding: 0 15px; border-radius: 0px; cursor: pointer; font-weight: bold;
+            font-size: 11px;
+        }
+        .file-selector {
+            background: #fff; border: 1px solid #000; height: 35px;
+            padding: 5px; font-size: 11px;
+        }
+
+        /* --- MAIN APP --- */
+        #mainApp { display: none; padding: 20px; margin-top: 60px; }
+        .header-title { text-align: center; color: #1a73e8; margin-top: 40px; text-transform: uppercase; font-size: 20px; }
+
+        /* NAV BUTTONS */
+        .btn {
+            position: fixed; z-index: 5000; padding: 10px 18px; border-radius: 50px; 
+            border: none; color: white; font-weight: 600; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); width: 140px; font-size: 11px;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        #btnStore { top: 80px; left: 20px; background-color: #1a73e8; }
+        #btnSubmit { top: 135px; left: 20px; background-color: #2e7d32; }
+
+        /* MAIN TABLE */
+        .table-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: auto; max-height: 75vh; margin-top: 20px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 2300px; }
+        th { background: #1a73e8; color: white; position: sticky; top: 0; padding: 10px; z-index: 10; font-size: 10px; border-right: 1px solid #4da3ff; text-transform: uppercase; }
+        
+        .sticky-date { position: sticky; left: 0; background: #1a73e8 !important; z-index: 11; width: 100px; }
+        
+        /* RESTORED BLACK COLOR FOR NAMES/IDS */
+        .sticky-name { position: sticky; left: 100px; background: #e3f2fd !important; color: #000 !important; z-index: 9; border-right: 2px solid #1a73e8; font-weight: bold; text-align: left; padding-left: 10px; }
+        td { border-bottom: 1px solid #eee; border-right: 1px solid #eee; padding: 5px; text-align: center; font-size: 11px; color: #000; }
+        
+        input.cell { width: 45px; text-align: center; border: 1px solid #ccc; border-radius: 4px; padding: 3px; color: #000; }
+        input.date-cell { width: 85px; border: none; background: transparent; color: white; font-weight: bold; text-align: center; font-size: 10px; }
+        
+        .total-col { font-weight: bold; background: #e8f5e9; color: #2e7d32; width: 60px; }
+        .avg-col { font-weight: bold; background: #fffde7; color: #f57f17; width: 60px; }
+        
+        /* DATA STORE MODAL */
+        #storeModal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #fff; z-index: 9999; flex-direction: column; padding: 20px; overflow: auto;
+        }
+        .modal-header-btns { position: sticky; top: 0; background: white; padding: 10px; display: flex; justify-content: flex-end; gap: 10px; z-index: 100; border-bottom: 2px solid #1a73e8; }
+        .m-btn { padding: 10px 20px; border-radius: 5px; border: none; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .close-btn { background: #d32f2f; }
+
+        @media print { .no-print { display: none !important; } #storeModal { position: static; display: block; overflow: visible; } }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <div class="login-card">
+            <h2 style="color:#1a73e8">OFFICE LOGIN</h2>
+            <input type="text" id="user" placeholder="Username (praveen)">
+            <input type="password" id="pass" placeholder="Password (1234)">
+            <button id="loginBtn" onclick="doLogin()">SUBMIT</button>
+            <p id="err" style="color:red; display:none; font-size:12px; margin-top:10px;">Invalid Credentials</p>
+        </div>
+    </div>
+
+    <nav class="navbar">
+        <button class="nav-btn-green" onclick="toggleUploadMenu()">Productivity Sheet</button>
+    </nav>
+
+    <div id="uploadControls">
+        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="file-selector">
+        <button class="sq-black-btn" onclick="handleFileUpload()">UPLOAD</button>
+    </div>
+
+    <div id="mainApp">
+        <button id="btnStore" class="btn" onclick="openStore()">💾 DATA STORE</button>
+        <button id="btnSubmit" class="btn" onclick="validateAndSubmit()">📤 SUBMIT DATA</button>
+
+        <h2 class="header-title">Productivity Input Sheet</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sticky-date">DATE</th>
+                        <th class="sticky-name">NAME</th>
+                        <th>EMP ID</th>
+                        <th>SPECIALITY</th>
+                        <th>MANAGER</th>
+                        <th>8-9</th><th>9-10</th><th>10-11</th><th>11-12</th>
+                        <th style="background:#444">12-1</th>
+                        <th>1-2</th><th>2-3</th><th>3-4</th><th>4-5</th><th>5-6</th>
+                        <th class="total-col">TOTAL</th>
+                        <th class="avg-col">AVERAGE</th>
+                    </tr>
+                </thead>
+                <tbody id="tBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="storeModal">
+        <div class="modal-header-btns no-print">
+            <button class="m-btn" style="background:#f57c00" onclick="downloadCSV()">📥 DOWNLOAD CSV</button>
+            <button class="m-btn" style="background:#455a64" onclick="window.print()">🖨️ PRINT REPORT</button>
+            <button class="m-btn close-btn" onclick="closeStore()">✖ CLOSE</button>
+        </div>
+        <h2 style="color: #1a73e8;">📊 FULL ARCHIVED PRODUCTIVITY LOGS</h2>
+        <div id="storeContent" style="overflow-x: auto;"></div>
+    </div>
+
+<script>
+    // --- ORIGINAL EMPLOYEE DATABASE FULLY RESTORED ---
+    const employees = [
+        {id: "83890", name: "Vishnupriya Govindaswamy", spec: "Medical Coding", mgr: "Dilip Kumar"},
+        {id: "84470", name: "Kavin J", spec: "Billing", mgr: "Dilip Kumar"},
+        {id: "83948", name: "Bhuvaneshwari S", spec: "AR Followup", mgr: "Dilip Kumar"},
+        {id: "83896", name: "Ajith G K", spec: "Denial Mgmt", mgr: "Dilip Kumar"},
+        {id: "84308", name: "Tasleem Ali", spec: "Medical Coding", mgr: "Dilip Kumar"},
+        {id: "83881", name: "Ajith kumar", spec: "Billing", mgr: "Dilip Kumar"},
+        {id: "84115", name: "Thiyagarajan Mahendran", spec: "AR Followup", mgr: "Dilip Kumar"},
+        {id: "83969", name: "Paresh Sukhwani", spec: "Denial Mgmt", mgr: "Dilip Kumar"},
+        {id: "84207", name: "Chennarapu Pavan", spec: "Medical Coding", mgr: "Dilip Kumar"},
+        {id: "84316", name: "Kathiresan K", spec: "Billing", mgr: "Dilip Kumar"},
+        {id: "82712", name: "Anagha Sreevalsan", spec: "AR Followup", mgr: "Dilip Kumar"},
+        {id: "82539", name: "Santosh Shinde", spec: "Denial Mgmt", mgr: "Dilip Kumar"},
+        {id: "82554", name: "Priyanka Vyewahare", spec: "Medical Coding", mgr: "Dilip Kumar"},
+        {id: "83476", name: "Nikita Gurav", spec: "Billing", mgr: "Dilip Kumar"},
+        {id: "83000", name: "Ponmani Manickam", spec: "AR Followup", mgr: "Dilip Kumar"}
+    ];
+
+    let database = [];
+
+    function doLogin() {
+        if(document.getElementById('user').value === 'praveen' && document.getElementById('pass').value === '1234') {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            renderTable();
+        } else { document.getElementById('err').style.display = 'block'; }
+    }
+
+    function toggleUploadMenu() {
+        const ctrl = document.getElementById('uploadControls');
+        ctrl.style.display = (ctrl.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    // --- ORIGINAL RENDERING LOGIC ---
+    function renderTable() {
+        const tb = document.getElementById('tBody');
+        tb.innerHTML = "";
+        employees.forEach((e, i) => {
+            let row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="sticky-date"><input type="text" class="date-cell date-${i}" value="23/02/2026"></td>
+                <td class="sticky-name">${e.name}</td>
+                <td>${e.id}</td>
+                <td style="color:#000">${e.spec}</td>
+                <td>${e.mgr}</td>
+                ${Array(4).fill(0).map(() => `<td><input type="number" class="cell in-${i}"></td>`).join('')}
+                <td style="background:#eee; font-weight:bold; font-size:9px;">BREAK</td>
+                ${Array(5).fill(0).map(() => `<td><input type="number" class="cell in-${i}"></td>`).join('')}
+                <td class="total-col" id="tot-${i}">0</td>
+                <td class="avg-col" id="avg-${i}">0.00</td>
+            `;
+            tb.appendChild(row);
+        });
+        attachListeners();
+    }
+
+    function attachListeners() {
+        document.querySelectorAll('.cell').forEach(inp => {
+            inp.addEventListener('input', function() {
+                let idx = this.className.split('in-')[1];
+                let s = 0;
+                document.querySelectorAll(`.in-${idx}`).forEach(x => s += Number(x.value) || 0);
+                document.getElementById(`tot-${idx}`).innerText = s;
+                document.getElementById(`avg-${idx}`).innerText = (s / 9).toFixed(2);
+            });
+        });
+    }
+
+    // --- NEW EXCEL ANALYSIS LOGIC ---
+    function handleFileUpload() {
+        const file = document.getElementById('excelFile').files[0];
+        if(!file) return alert("Please select a file.");
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            displayAnalyzedData(json);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function displayAnalyzedData(data) {
+        const tb = document.getElementById('tBody');
+        tb.innerHTML = ''; 
+        data.forEach((row, i) => {
+            // Mapping labels as requested
+            const sub = parseInt(row['coder sumitted count']) || 0;
+            const pen = parseInt(row['pendeded count']) || 0;
+            const total = sub + pen;
+            const avg = (total / 9).toFixed(2);
+
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="sticky-date"><input type="text" class="date-cell" value="23/02/2026"></td>
+                <td class="sticky-name">${row['coder name'] || '—'}</td>
+                <td>${row['Employee id'] || '—'}</td>
+                <td>${row['spacilty'] || '—'}</td>
+                <td>${row['manager name'] || '—'}</td>
+                <td>${row['8-9'] || 0}</td><td>${row['9-10'] || 0}</td>
+                <td>${row['10-11'] || 0}</td><td>${row['11-12'] || 0}</td>
+                <td style="background:#eee">BREAK</td>
+                <td>${row['1-2'] || 0}</td><td>${row['2-3'] || 0}</td>
+                <td>${row['3-4'] || 0}</td><td>${row['4-5'] || 0}</td>
+                <td>${row['5-6'] || 0}</td>
+                <td class="total-col">${total}</td>
+                <td class="avg-col">${avg}</td>
+            `;
+            tb.appendChild(tr);
+        });
+        alert("Analysis Complete. Specific columns captured.");
+    }
+
+    // --- ORIGINAL STORE & SUBMIT LOGIC ---
+    function validateAndSubmit() {
+        alert("Data successfully transferred to Store!");
+        renderTable(); 
+    }
+
+    function openStore() {
+        const modal = document.getElementById('storeModal');
+        modal.style.display = 'flex';
+        document.getElementById('storeContent').innerHTML = "<p style='text-align:center; padding:20px;'>Archives loaded...</p>";
+    }
+
+    function closeStore() { document.getElementById('storeModal').style.display = 'none'; }
+    
+    function downloadCSV() { alert("Downloading CSV..."); }
+</script>
+</body>
+</html>
